@@ -1,0 +1,6 @@
+{
+  "name": "Space Invaders Neón",
+  "description": "Juego de disparos espacial retro con estética neón y motor de alto rendimiento.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["canvas", "audio"]
+}
