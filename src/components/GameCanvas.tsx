@@ -94,6 +94,20 @@ export default function GameCanvas({ status, gameOver, updateScore }: GameCanvas
     }
   }, [status]);
 
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (status !== 'playing') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const x = (e.clientX - rect.left) * scaleX;
+    
+    let newX = x - PLAYER_WIDTH / 2;
+    if (newX < 0) newX = 0;
+    if (newX > CANVAS_WIDTH - PLAYER_WIDTH) newX = CANVAS_WIDTH - PLAYER_WIDTH;
+    playerX.current = newX;
+  }, [status]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       keysPressed.current[e.key] = true;
@@ -182,15 +196,31 @@ export default function GameCanvas({ status, gameOver, updateScore }: GameCanvas
         p.y -= PROJECTILE_SPEED;
         if (p.y < -20) p.active = false;
 
-        // Collision with enemies
-        for (const enemy of enemies.current) {
-          if (enemy.alive && p.x < enemy.x + enemy.width && p.x + p.width > enemy.x &&
-              p.y < enemy.y + enemy.height && p.y + p.height > enemy.y) {
-            enemy.alive = false;
-            p.active = false;
-            score.current += 100;
-            updateScore(score.current);
-            break; // One bullet hits one enemy
+        if (p.active) {
+          // Collision with enemies
+          for (const enemy of enemies.current) {
+            if (enemy.alive && p.x < enemy.x + enemy.width && p.x + p.width > enemy.x &&
+                p.y < enemy.y + enemy.height && p.y + p.height > enemy.y) {
+              enemy.alive = false;
+              p.active = false;
+              score.current += 100;
+              updateScore(score.current);
+              break; // One bullet hits one enemy
+            }
+          }
+        }
+
+        if (p.active) {
+          // Collision with enemy projectiles
+          for (const ep of projectiles.current) {
+            if (ep.active && !ep.fromPlayer) {
+              if (p.x < ep.x + ep.width && p.x + p.width > ep.x &&
+                  p.y < ep.y + ep.height && p.y + p.height > ep.y) {
+                p.active = false;
+                ep.active = false;
+                break; // Bullets destroy each other
+              }
+            }
           }
         }
       } else {
@@ -292,39 +322,13 @@ export default function GameCanvas({ status, gameOver, updateScore }: GameCanvas
           ref={canvasRef} 
           width={CANVAS_WIDTH} 
           height={CANVAS_HEIGHT}
-          className="bg-black/80 rounded-lg max-w-full h-auto cursor-none shadow-2xl"
+          onPointerMove={handlePointerMove}
+          onPointerDown={(e) => {
+            handlePointerMove(e);
+            handleShoot();
+          }}
+          className="bg-black/80 rounded-lg max-w-full h-auto cursor-none shadow-2xl touch-none"
         />
-        
-        {/* Mobile Controls Overlay */}
-        <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end md:hidden pointer-events-none">
-          <div className="flex gap-4 pointer-events-auto">
-            <button 
-              onPointerDown={() => keysPressed.current['ArrowLeft'] = true}
-              onPointerUp={() => keysPressed.current['ArrowLeft'] = false}
-              onPointerLeave={() => keysPressed.current['ArrowLeft'] = false}
-              className="w-16 h-16 rounded-full glass-morphism flex items-center justify-center active:scale-95 transition-transform border-2 border-cyan-500/50"
-            >
-              <span className="text-2xl text-cyan-500">←</span>
-            </button>
-            <button 
-              onPointerDown={() => keysPressed.current['ArrowRight'] = true}
-              onPointerUp={() => keysPressed.current['ArrowRight'] = false}
-              onPointerLeave={() => keysPressed.current['ArrowRight'] = false}
-              className="w-16 h-16 rounded-full glass-morphism flex items-center justify-center active:scale-95 transition-transform border-2 border-cyan-500/50"
-            >
-              <span className="text-2xl text-cyan-500">→</span>
-            </button>
-          </div>
-          <button 
-            onPointerDown={(e) => {
-                e.preventDefault();
-                handleShoot();
-            }}
-            className="w-24 h-24 rounded-full glass-morphism flex items-center justify-center active:scale-95 transition-transform border-2 border-magenta-500/50 pointer-events-auto"
-          >
-            <span className="text-sm font-bold text-magenta-500 uppercase">FIRE</span>
-          </button>
-        </div>
       </div>
     </div>
   );
