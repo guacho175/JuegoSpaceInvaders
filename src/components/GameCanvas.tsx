@@ -1,22 +1,26 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { 
-  CANVAS_WIDTH, 
-  CANVAS_HEIGHT, 
-  PLAYER_WIDTH, 
-  PLAYER_HEIGHT, 
-  PLAYER_SPEED, 
-  ENEMY_COLS, 
-  ENEMY_ROWS, 
-  ENEMY_WIDTH, 
-  ENEMY_HEIGHT, 
-  ENEMY_PADDING, 
-  ENEMY_OFFSET_TOP, 
-  ENEMY_OFFSET_LEFT,
-  PROJECTILE_SPEED,
-  ENEMY_PROJECTILE_SPEED,
-  ENEMY_FIRE_RATE,
-  COLORS
-} from '../constants';
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 600;
+const PLAYER_WIDTH = 40;
+const PLAYER_HEIGHT = 30;
+const PLAYER_SPEED = 5;
+const ENEMY_COLS = 10;
+const ENEMY_ROWS = 5;
+const ENEMY_WIDTH = 30;
+const ENEMY_HEIGHT = 20;
+const ENEMY_PADDING = 15;
+const ENEMY_OFFSET_TOP = 50;
+const ENEMY_OFFSET_LEFT = 175;
+const PROJECTILE_SPEED = 7;
+const ENEMY_PROJECTILE_SPEED = 4;
+const ENEMY_FIRE_RATE = 0.002;
+const COLORS = {
+  player: '#22d3ee', // cyan-400
+  enemyRow1: '#f43f5e', // rose-500
+  enemyRow2: '#d946ef', // fuchsia-500
+  projectile: '#22d3ee',
+  enemyProjectile: '#d946ef',
+};
 import { Enemy, Projectile, GameStatus } from '../types';
 
 interface GameCanvasProps {
