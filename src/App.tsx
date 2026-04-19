@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, RotateCcw, Trophy, Volume2, VolumeX, Space, ListOrdered, Heart, Terminal } from 'lucide-react';
+import { Play, RotateCcw, Trophy, Volume2, VolumeX, Space, ListOrdered, Heart, Terminal, Save, User } from 'lucide-react';
 import GameCanvas from './components/GameCanvas';
 import { GameStatus } from './types';
 import NeonMusicPlayer from './components/NeonMusicPlayer';
@@ -24,6 +24,9 @@ export default function App() {
   
   const [ranking, setRanking] = useState<ScoreEntry[]>([]);
   const [isLoadingRanking, setIsLoadingRanking] = useState(false);
+  const [playerName, setPlayerName] = useState('');
+  const [hasSaved, setHasSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const loadRanking = async () => {
@@ -88,6 +91,32 @@ export default function App() {
   const startGame = () => {
     setStatus('playing');
     setScore(0);
+    setHasSaved(false);
+    setPlayerName('');
+  };
+
+  const saveScore = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!playerName.trim() || isSaving) return;
+    setIsSaving(true);
+    const entryData = {
+      juego: 'invaders',
+      nombre: String(playerName.trim()).substring(0, 25),
+      puntos: score
+    };
+    const sheetUrl = "https://script.google.com/macros/s/AKfycbwk6I3OvEN4GL1zjBcDvarlN_LVGrKWHXYbFVIOgXOOC1_Us1gEnT0dHIEiEkZLApuV/exec";
+    try {
+      await fetch(sheetUrl, { method: 'POST', body: JSON.stringify(entryData) });
+    } catch (err) {
+      console.error('Error saving:', err);
+    }
+    const entry = { name: entryData.nombre, score, difficulty: '', date: new Date().toLocaleDateString() };
+    const prev = JSON.parse(localStorage.getItem('invaders_neon_ranking') || '[]') as ScoreEntry[];
+    const next = [...prev, entry].sort((a, b) => b.score - a.score).slice(0, 10);
+    localStorage.setItem('invaders_neon_ranking', JSON.stringify(next));
+    setHasSaved(true);
+    setIsSaving(false);
+    window.dispatchEvent(new Event('rankingUpdated'));
   };
 
   return (
@@ -217,31 +246,79 @@ export default function App() {
                   )}
 
                   {status === 'gameover' && (
-                    <>
+                    <div className="w-full max-w-xs space-y-4 text-center">
                       <h2 className="text-5xl font-black mb-2 uppercase tracking-tighter text-red-500 neon-shadow-magenta">Game Over</h2>
-                      <p className="text-gray-400 mb-8">Los invasores han conquistado el sistema.</p>
-                      <div className="text-3xl font-mono mb-8">Puntuación Final: <span className="text-cyan-400">{score}</span></div>
+                      <p className="text-gray-400 mb-4">Los invasores han conquistado el sistema.</p>
+                      <div className="text-3xl font-mono mb-4">Puntuación Final: <span className="text-cyan-400">{score}</span></div>
+                      
+                      {!hasSaved ? (
+                        <form onSubmit={saveScore} className="space-y-2.5 text-left mb-4">
+                          <p className="text-[9px] uppercase font-mono text-slate-500 pl-1">Nombre para el ranking</p>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                            <input type="text" value={playerName}
+                              onChange={e => setPlayerName(e.target.value)}
+                              placeholder="TU NOMBRE"
+                              className="w-full bg-slate-900 border border-slate-700 focus:border-cyan-500 px-9 py-2 rounded-lg
+                                         text-slate-100 placeholder:text-slate-600 font-mono uppercase text-xs focus:outline-none transition-colors"
+                              maxLength={10} autoFocus />
+                          </div>
+                          <button type="submit" disabled={!playerName.trim() || isSaving}
+                            className="w-full flex items-center justify-center gap-2 py-2 font-bold uppercase
+                                       tracking-widest rounded-lg text-xs text-black transition-all bg-cyan-500 hover:bg-cyan-400
+                                       disabled:opacity-40 disabled:cursor-not-allowed">
+                            {isSaving ? <span className="animate-pulse">Guardando...</span> : <><Save className="w-3.5 h-3.5" /> Guardar Score</>}
+                          </button>
+                        </form>
+                      ) : (
+                        <motion.p initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="font-mono text-xs uppercase text-emerald-400 py-2">✓ ¡Puntuación guardada!</motion.p>
+                      )}
+
                       <button 
                         onClick={startGame}
-                        className="flex items-center gap-3 bg-magenta-600 hover:bg-magenta-500 text-white px-8 py-4 rounded-full font-black uppercase tracking-widest transition-all hover:scale-105"
+                        className="flex w-full items-center justify-center gap-3 bg-magenta-600 hover:bg-magenta-500 text-white px-8 py-4 rounded-full font-black uppercase tracking-widest transition-all hover:scale-105"
                       >
                         <RotateCcw /> Reintentar
                       </button>
-                    </>
+                    </div>
                   )}
 
                   {status === 'victory' && (
-                    <>
+                    <div className="w-full max-w-xs space-y-4 text-center">
                       <h2 className="text-5xl font-black mb-2 uppercase tracking-tighter text-cyan-400 neon-shadow-cyan">¡Victoria!</h2>
-                      <p className="text-gray-400 mb-8">El código ha sido purificado. Eres el guardián del sistema.</p>
-                      <div className="text-3xl font-mono mb-8 text-yellow-400">¡Nuevo Récord! {score}</div>
+                      <p className="text-gray-400 mb-4">El código ha sido purificado.</p>
+                      <div className="text-3xl font-mono mb-4 text-yellow-400">Puntuación: {score}</div>
+                      
+                      {!hasSaved ? (
+                        <form onSubmit={saveScore} className="space-y-2.5 text-left mb-4">
+                          <p className="text-[9px] uppercase font-mono text-slate-500 pl-1">Nombre para el ranking</p>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                            <input type="text" value={playerName}
+                              onChange={e => setPlayerName(e.target.value)}
+                              placeholder="TU NOMBRE"
+                              className="w-full bg-slate-900 border border-slate-700 focus:border-cyan-500 px-9 py-2 rounded-lg
+                                         text-slate-100 placeholder:text-slate-600 font-mono uppercase text-xs focus:outline-none transition-colors"
+                              maxLength={10} autoFocus />
+                          </div>
+                          <button type="submit" disabled={!playerName.trim() || isSaving}
+                            className="w-full flex items-center justify-center gap-2 py-2 font-bold uppercase
+                                       tracking-widest rounded-lg text-xs text-black transition-all bg-cyan-500 hover:bg-cyan-400
+                                       disabled:opacity-40 disabled:cursor-not-allowed">
+                            {isSaving ? <span className="animate-pulse">Guardando...</span> : <><Save className="w-3.5 h-3.5" /> Guardar Score</>}
+                          </button>
+                        </form>
+                      ) : (
+                        <motion.p initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="font-mono text-xs uppercase text-emerald-400 py-2">✓ ¡Puntuación guardada!</motion.p>
+                      )}
+
                       <button 
                         onClick={startGame}
-                        className="flex items-center gap-3 bg-cyan-500 hover:bg-cyan-400 text-black px-8 py-4 rounded-full font-black uppercase tracking-widest transition-all hover:scale-105"
+                        className="flex w-full justify-center items-center gap-3 bg-cyan-500 hover:bg-cyan-400 text-black px-8 py-4 rounded-full font-black uppercase tracking-widest transition-all hover:scale-105"
                       >
                         <RotateCcw className="fill-black" /> Jugar de Nuevo
                       </button>
-                    </>
+                    </div>
                   )}
                 </motion.div>
               )}
